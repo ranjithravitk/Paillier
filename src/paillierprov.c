@@ -387,9 +387,14 @@ static void *Paillierkey_gen_init(void *provctx, int selection,
             // Handle error
             return 0;
         }
+        keygen->pbits=keygen->nbits>>1;
+        keygen->qbits=keygen->nbits>>1;
+
     }
     else{
        keygen->nbits = 2048;
+       keygen->pbits=2048>>1;
+       keygen->qbits=2048>>1;
     }
         
         //keygen->generator = 2;
@@ -483,14 +488,14 @@ static void *Paillierkey_gen(void *genctx, OSSL_CALLBACK *cb, void *cbarg)
         if (gencb != NULL)
 		BN_GENCB_set(gencb, Paillier_gencb, genctx);
         
-        temp = param_generation_function(keydata,tempctx->nbits,gencb);
+        temp = param_generation_function(keydata,tempctx->nbits,tempctx->pbits,tempctx->qbits,gencb);
 		
-		// if (tempctx->selection == OSSL_KEYMGMT_SELECT_KEYPAIR &&
-		//     temp) {
-		// 	keydata->selections = tempctx->selection;
-		// 	//call the key generation functions in the Pailliersrc.c file
-		// 	temp=Paillier_priv_key_gen(keydata,gencb);
-
+		if (tempctx->selection == OSSL_KEYMGMT_SELECT_KEYPAIR &&
+		    temp) {
+			keydata->selections = tempctx->selection;
+			//call the key generation functions in the Pailliersrc.c file
+			temp=Paillier_priv_key_gen(keydata,gencb);
+            }
 		// } else if (tempctx->selection ==
 		// 		   OSSL_KEYMGMT_SELECT_PUBLIC_KEY &&
 		// 	   temp) {

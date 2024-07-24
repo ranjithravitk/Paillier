@@ -48,6 +48,8 @@ struct key_data {
 	const char *algo_name; //algorithm name
 	int prime_len;
 	//int generator;
+	BIGNUM *p;
+	BIGNUM *q;
 	BIGNUM *n; // Prime number
 	BIGNUM *lambda;
 	BIGNUM *g; // Generator
@@ -68,7 +70,8 @@ struct keyctx_gen {
 	int selection;
     /* All these parameters are used for parameter generation only */
     size_t nbits;
-   
+    size_t pbits;
+	size_t qbits;
     int generator; /* Used by Paillier as there is no FIPS mode */
     OSSL_CALLBACK *cb;
     void *cbarg;
@@ -115,7 +118,7 @@ typedef struct{
     unsigned char *c1;
     unsigned char *c2;
 } PaillierCiphertext;
-int param_generation_function(keyctx *keydata,int pbits,BN_GENCB *cb);
+int param_generation_function(keyctx *keydata,int nbits,int pbits,int qbits,BN_GENCB *cb);
 int Paillier_builtin_paramgen(keyctx *keydata, int prime_len, int generator);
 int Paillier_priv_key_gen(keyctx *keydata, BN_GENCB *cb);
 int Paillier_public_key_gen(BN_CTX *ctx,const keyctx *keydata,const BIGNUM *priv,BIGNUM *public);
