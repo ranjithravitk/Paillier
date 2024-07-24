@@ -4,8 +4,8 @@
     algorithm/Pailliersrc.c
    # algorithm/store.c
     paillierprov.c
-    #algorithm/encoder.c
-    #algorithm/decoder.c
+    algorithm/encoder.c
+    algorithm/decoder.c
     
 )
   add_library(Paillier SHARED ${SOURCES})

@@ -47,23 +47,23 @@ static int Paillierpriv_encode_key(void *vctx, OSSL_CORE_BIO *out, const void *k
     int der_len;
     BIO *bout = NULL;
     int ret = 0;
-    Paillier_PRIVATEKEY *privkey=NULL;
-    Paillier_PUBLICKEY *pubkey =NULL;
+    PAILLIER_PRIVATEKEY *privkey=NULL;
+    PAILLIER_PUBLICKEY *pubkey =NULL;
     if(kdata->selections == OSSL_KEYMGMT_SELECT_KEYPAIR)
     {
-    privkey = Paillier_PRIVATEKEY_new();
+    privkey = PAILLIER_PRIVATEKEY_new();
     if (privkey == NULL)
         return 0;
 
-    privkey->x = bn_to_asn1_integer(kdata->x);
-	privkey->g = bn_to_asn1_integer(kdata->g);
-	privkey->p=bn_to_asn1_integer(kdata->p);
-    privkey->y=bn_to_asn1_integer(kdata->y);
-    if (privkey->x == NULL||privkey->g==NULL||privkey->p==NULL || privkey->y==NULL)
+    privkey->lambda = bn_to_asn1_integer(kdata->lambda);
+	privkey->mu = bn_to_asn1_integer(kdata->mu);
+	privkey->n=bn_to_asn1_integer(kdata->n);
+    privkey->g=bn_to_asn1_integer(kdata->g);
+    if (privkey->lambda == NULL||privkey->mu==NULL||privkey->n==NULL || privkey->g==NULL)
         goto err;
 	
 
-    der_len = i2d_Paillier_PRIVATEKEY(privkey, &der);
+    der_len = i2d_PAILLIER_PRIVATEKEY(privkey, &der);
     if (der_len < 0)
         goto err;
 
@@ -75,35 +75,35 @@ static int Paillierpriv_encode_key(void *vctx, OSSL_CORE_BIO *out, const void *k
         goto err;
     ret = 1;
     }
-    if(selection==OSSL_KEYMGMT_SELECT_PUBLIC_KEY){
-     pubkey=Paillier_PUBLICKEY_new();
-      if (pubkey == NULL)
-        return 0;
+    // if(selection==OSSL_KEYMGMT_SELECT_PUBLIC_KEY){
+    //  pubkey=Paillier_PUBLICKEY_new();
+    //   if (pubkey == NULL)
+    //     return 0;
 
-    pubkey->y = bn_to_asn1_integer(kdata->y);
-    if (pubkey->y == NULL)
-        goto err;
+    // pubkey->y = bn_to_asn1_integer(kdata->y);
+    // if (pubkey->y == NULL)
+    //     goto err;
 
-    der_len = i2d_Paillier_PUBLICKEY(pubkey, &der);
-    if (der_len < 0)
-        goto err;
+    // der_len = i2d_Paillier_PUBLICKEY(pubkey, &der);
+    // if (der_len < 0)
+    //     goto err;
 
-    bout = BIO_new_from_core_bio(ectx->libctx, out);
-    if (bout == NULL)
-        goto err;
+    // bout = BIO_new_from_core_bio(ectx->libctx, out);
+    // if (bout == NULL)
+    //     goto err;
 
-    if (PEM_write_bio(bout, "Paillier PUBLIC KEY", "", der, der_len) <= 0)
-        goto err;
-     ret=1;
-    }
+    // if (PEM_write_bio(bout, "Paillier PUBLIC KEY", "", der, der_len) <= 0)
+    //     goto err;
+    //  ret=1;
+    // }
 
     
 
 err:
     OPENSSL_free(der);
     BIO_free(bout);
-    Paillier_PRIVATEKEY_free(privkey);
-    Paillier_PUBLICKEY_free(pubkey);
+    PAILLIER_PRIVATEKEY_free(privkey);
+    PAILLIER_PUBLICKEY_free(pubkey);
 
 
     return ret;
@@ -145,20 +145,20 @@ static int Paillierpub_encode_key(void *vctx, OSSL_CORE_BIO *out, const void *ke
     int der_len;
     BIO *bout = NULL;
     int ret = 0;
-    Paillier_PRIVATEKEY *privkey=NULL;
-    Paillier_PUBLICKEY *pubkey =NULL;
+    PAILLIER_PRIVATEKEY *privkey=NULL;
+    PAILLIER_PUBLICKEY *pubkey =NULL;
 
-    pubkey=Paillier_PUBLICKEY_new();
+    pubkey=PAILLIER_PUBLICKEY_new();
       if (pubkey == NULL)
         return 0;
 
-    pubkey->y = bn_to_asn1_integer(kdata->y);
-    pubkey->p = bn_to_asn1_integer(kdata->p);
+    pubkey->n = bn_to_asn1_integer(kdata->n);
     pubkey->g = bn_to_asn1_integer(kdata->g);
-    if (pubkey->y == NULL||pubkey->p == NULL||pubkey->g == NULL)
+   
+    if (pubkey->n == NULL||pubkey->g == NULL)
         goto err;
 
-    der_len = i2d_Paillier_PUBLICKEY(pubkey, &der);
+    der_len = i2d_PAILLIER_PUBLICKEY(pubkey, &der);
     if (der_len < 0)
         goto err;
 
@@ -176,8 +176,8 @@ static int Paillierpub_encode_key(void *vctx, OSSL_CORE_BIO *out, const void *ke
 err:
     OPENSSL_free(der);
     BIO_free(bout);
-    Paillier_PRIVATEKEY_free(privkey);
-    Paillier_PUBLICKEY_free(pubkey);
+    PAILLIER_PRIVATEKEY_free(privkey);
+    PAILLIER_PUBLICKEY_free(pubkey);
 
 
     return ret;

@@ -684,18 +684,18 @@ static const OSSL_DISPATCH Paillierkey_functions[] = {
 static const OSSL_ALGORITHM Paillierkey_operation[] = { { "Paillier", "x.author=ranjith",
 						    Paillierkey_functions},
 						  { NULL, NULL, NULL } };
-// static const OSSL_ALGORITHM Paillierkey_encoders[]={
-// 	{"Paillier","provider=Paillier,output=pem,structure=PrivateKeyInfo",Paillierpriv_encoder_PEM},
-//     {"Paillier","provider=Paillier,output=pem,structure=SubjectPublicKeyInfo",Paillierpub_encoder_PEM},
-// 	{NULL,NULL,NULL}};
+static const OSSL_ALGORITHM Paillierkey_encoders[]={
+	{"Paillier","provider=Paillier,output=pem,structure=PrivateKeyInfo",Paillierpriv_encoder_PEM},
+    {"Paillier","provider=Paillier,output=pem,structure=SubjectPublicKeyInfo",Paillierpub_encoder_PEM},
+	{NULL,NULL,NULL}};
 
 
 
 
-// const OSSL_ALGORITHM Paillierkey_decoders[]={
-// 	 { "PEM", "provider=Paillier,input=pem", PaillierPEM_decoder_functions },
-//      { "DER", "provider=Paillier,input=der,structure=Paillier", PaillierDER_decoder_functions },
-// 	{NULL,NULL,NULL}};
+const OSSL_ALGORITHM Paillierkey_decoders[]={
+	 { "PEM", "provider=Paillier,input=pem", PaillierPEM_decoder_functions },
+     { "DER", "provider=Paillier,input=der,structure=Paillier", PaillierDER_decoder_functions },
+	{NULL,NULL,NULL}};
 
 
 static const OSSL_ALGORITHM *
@@ -708,10 +708,10 @@ Paillier_prov_operation(void *vprovctx, int operation_id, int *no_cache)
 	// 	return Paillier_ciphers;
 	case OSSL_OP_KEYMGMT:
 	    return Paillierkey_operation;
-	// case  OSSL_OP_ENCODER:
-	//     return Paillierkey_encoders;
-	// case OSSL_OP_DECODER:
-	//     return Paillierkey_decoders;
+	case  OSSL_OP_ENCODER:
+	    return Paillierkey_encoders;
+	case OSSL_OP_DECODER:
+	    return Paillierkey_decoders;
 	}
 
 	return NULL;

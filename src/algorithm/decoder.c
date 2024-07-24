@@ -192,23 +192,20 @@ static int PaillierDER_decode_key(void *ctx, OSSL_CORE_BIO *in, int selection, O
     if (kdata == NULL)
         goto err;
     if(selection==OSSL_KEYMGMT_SELECT_ALL){
-     Paillier_PRIVATEKEY *privkey = d2i_Paillier_PRIVATEKEY(NULL, (const unsigned char **)&der_data, der_len);
+     PAILLIER_PRIVATEKEY *privkey = d2i_PAILLIER_PRIVATEKEY(NULL, (const unsigned char **)&der_data, der_len);
         if (privkey == NULL)
             goto err;
 
-        kdata->x = asn1_integer_to_bn(privkey->x);
-        kdata->p=asn1_integer_to_bn(privkey->p);
+        kdata->lambda = asn1_integer_to_bn(privkey->lambda);
+        kdata->mu=asn1_integer_to_bn(privkey->mu);
         kdata->g=asn1_integer_to_bn(privkey->g);
-        kdata->y=asn1_integer_to_bn(privkey->y);
-        if (kdata->x == NULL ||kdata->p==NULL || kdata->g==NULL|| kdata->y==NULL)
+        kdata->n=asn1_integer_to_bn(privkey->n);
+        if (kdata->lambda == NULL ||kdata->mu==NULL || kdata->g==NULL|| kdata->n==NULL)
             goto err;
 
         kdata->selections |= OSSL_KEYMGMT_SELECT_PRIVATE_KEY;
         // kdata->provctx.core_handle=dctx->core;
         // kdata->provctx->libctx=dctx->libctx;
-        kdata->prime_len=BN_num_bits(kdata->p);
-        kdata->x_key_size=BN_num_bits(kdata->x);
-        kdata->y_key_size=BN_num_bits(kdata->y);
         kdata->algo_name="Paillier";
         object_type=OSSL_OBJECT_PKEY;
         params[0] = OSSL_PARAM_construct_int(OSSL_OBJECT_PARAM_TYPE, &object_type);
@@ -218,24 +215,22 @@ static int PaillierDER_decode_key(void *ctx, OSSL_CORE_BIO *in, int selection, O
                                                       &kdata, sizeof(kdata));
         params[3] = OSSL_PARAM_construct_end();
         ret=data_cb(params,data_cbarg);
-        Paillier_PRIVATEKEY_free(privkey);
+        PAILLIER_PRIVATEKEY_free(privkey);
     }
     if(selection==(OSSL_KEYMGMT_SELECT_PUBLIC_KEY|OSSL_KEYMGMT_SELECT_ALL_PARAMETERS)){
-        Paillier_PUBLICKEY *pubkey = d2i_Paillier_PUBLICKEY(NULL, (const unsigned char **)&der_data, der_len);
+        PAILLIER_PUBLICKEY *pubkey = d2i_PAILLIER_PUBLICKEY(NULL, (const unsigned char **)&der_data, der_len);
         if (pubkey == NULL)
             goto err;
 
-        kdata->p=asn1_integer_to_bn(pubkey->p);
+        kdata->n=asn1_integer_to_bn(pubkey->n);
         kdata->g=asn1_integer_to_bn(pubkey->g);
-        kdata->y=asn1_integer_to_bn(pubkey->y);
-        if (kdata->p==NULL || kdata->g==NULL|| kdata->y==NULL)
+        if (kdata->p==NULL || kdata->g==NULL)
             goto err;
 
         kdata->selections = OSSL_KEYMGMT_SELECT_PUBLIC_KEY|OSSL_KEYMGMT_SELECT_ALL_PARAMETERS;
         // kdata->provctx.core_handle=dctx->core;
         // kdata->provctx->libctx=dctx->libctx;
-        kdata->prime_len=BN_num_bits(kdata->p);
-        kdata->y_key_size=BN_num_bits(kdata->y);
+       // kdata->y_key_size=BN_num_bits(kdata->y);
         kdata->algo_name="Paillier";
         object_type=OSSL_OBJECT_PKEY;
         params[0] = OSSL_PARAM_construct_int(OSSL_OBJECT_PARAM_TYPE, &object_type);
@@ -245,7 +240,7 @@ static int PaillierDER_decode_key(void *ctx, OSSL_CORE_BIO *in, int selection, O
                                                       &kdata, sizeof(kdata));
         params[3] = OSSL_PARAM_construct_end();
         ret=data_cb(params,data_cbarg);
-        Paillier_PUBLICKEY_free(pubkey);
+        PAILLIER_PUBLICKEY_free(pubkey);
 
     }
 
