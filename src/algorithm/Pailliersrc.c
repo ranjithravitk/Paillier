@@ -113,3 +113,190 @@ err:
 	return ret;
 
 }
+
+int serialize_Paillier_ciphertext_readable(BIGNUM *c1,unsigned char *out, size_t *out_len) {
+    unsigned char *c1_bin;
+    int c1_len;
+    size_t required_len;
+
+    // Calculate the binary length of BIGNUMs
+    c1_len = BN_num_bytes(c1);
+
+    // Allocate memory for binary representations
+    c1_bin = (unsigned char *)OPENSSL_malloc(c1_len);
+   
+    if (c1_bin == NULL) {
+        OPENSSL_free(c1_bin);
+        return 0;
+    }
+
+    // Convert BIGNUMs to binary
+    BN_bn2bin(c1, c1_bin);
+
+    // Calculate the required buffer size
+    // Format: "c1_bin|c2_bin"
+    required_len = (c1_len * 2); // Each byte -> 2 hex chars, 1 delimiter
+
+    // If out is NULL, return the required size and exit
+    if (out == NULL) {
+        *out_len = required_len;
+        OPENSSL_free(c1_bin);
+        return 1;
+    }
+
+    // Check if the provided buffer is large enough
+    if (*out_len < required_len) {
+        OPENSSL_free(c1_bin);
+        return 0;
+    }
+
+    unsigned char *ptr = out;
+
+    // Write c1_bin in hex format
+    for (int i = 0; i < c1_len; i++) {
+        snprintf((char *)ptr, 3, "%02x", c1_bin[i]);
+        ptr += 2;
+    }
+
+    *out_len = required_len;
+
+    OPENSSL_free(c1_bin);
+
+    return 1;
+}
+
+BIGNUM *calculate_L(const BIGNUM *x, const BIGNUM *n, BN_CTX *ctx ) {
+    BIGNUM *result = BN_new();
+    BIGNUM *x_minus_one = BN_new();
+    BIGNUM *one = BN_new();
+
+
+    if (!result || !x_minus_one || !one || !ctx) {
+        fprintf(stderr, "Error: Memory allocation failed\n");
+        goto cleanup;
+    }
+
+    // Set one to 1
+    if (!BN_one(one)) {
+        fprintf(stderr, "Error: Setting one failed\n");
+        goto cleanup;
+    }
+
+    // Calculate x - 1
+    if (!BN_sub(x_minus_one, x, one)) {
+        fprintf(stderr, "Error: Calculating x-1 failed\n");
+        goto cleanup;
+    }
+	 // Calculate (x-1) / n
+    if (!BN_div(result, NULL, x_minus_one, n, ctx)) {
+        fprintf(stderr, "Error: Division failed\n");
+        goto cleanup;
+    }
+
+    // Cleanup and return
+    BN_CTX_free(ctx);
+    BN_free(x_minus_one);
+    BN_free(one);
+    return result;
+
+cleanup:
+    BN_free(result);
+    BN_free(x_minus_one);
+    BN_free(one);
+    BN_CTX_free(ctx);
+    return NULL;
+}
+int hex_to_bin(const char *hex, unsigned char *bin, int bin_len) {
+    for (int i = 0; i < bin_len; i++) {
+        sscanf(hex + 2 * i, "%02hhx", &bin[i]);
+    }
+    return 1;
+}
+
+int deserialize_Paillier_ciphertext_readable(const unsigned char *in, size_t in_len, BIGNUM **c1){
+
+ //int c1_len = BN_num_bytes(c1); // Length in bytes
+    
+    // Allocate memory for binary data
+    unsigned char *c1_bin = (unsigned char *)OPENSSL_malloc(in_len);
+   
+
+    if (c1_bin == NULL ) {
+        OPENSSL_free(c1_bin);
+        
+        return 0;
+    }
+
+    // Convert hexadecimal to binary for c1
+    hex_to_bin((const char *)in, c1_bin, c1_len);
+    *c1 = BN_bin2bn(c1_bin, c1_len, NULL);
+    OPENSSL_free(c1_bin);
+
+    // Check for allocation failure
+    if (*c1 == NULL) {
+        BN_free(*c1);
+        return 0;
+    }
+
+    return 1;
+}
+
+BIGNUM *calculate_m(const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, const BIGNUM *mu) {
+    BIGNUM *m = BN_new();
+    BIGNUM *n_squared = BN_new();
+    BIGNUM *c_lambda = BN_new();
+    BIGNUM *L_result = NULL;
+    BIGNUM *temp = BN_new();
+    BN_CTX *ctx = BN_CTX_new();
+
+    if (!m || !n_squared || !c_lambda || !temp || !ctx) {
+        fprintf(stderr, "Error: Memory allocation failed\n");
+        goto cleanup;
+    }
+
+    // Calculate n^2
+    if (!BN_sqr(n_squared, n, ctx)) {
+        fprintf(stderr, "Error: Calculating n^2 failed\n");
+        goto cleanup;
+    }
+
+    // Calculate c^λ mod n^2
+    if (!BN_mod_exp(c_lambda, c, lambda, n_squared, ctx)) {
+        fprintf(stderr, "Error: Calculating c^λ mod n^2 failed\n");
+        goto cleanup;
+    }
+    
+    // Calculate L(c^λ mod n^2)
+    L_result = calculate_L(c_lambda, n, ctx);
+    if (!L_result) {
+        fprintf(stderr, "Error: Calculating L failed\n");
+        goto cleanup;
+    }
+
+    // Calculate L(c^λ mod n^2) * μ
+    if (!BN_mod_mul(temp, L_result, mu, n, ctx)) {
+        fprintf(stderr, "Error: Multiplication failed\n");
+        goto cleanup;
+    }
+
+    // Final result: m = L(c^λ mod n^2) * μ mod n
+    if (!BN_nnmod(m, temp, n, ctx)) {
+        fprintf(stderr, "Error: Final modulo operation failed\n");
+        goto cleanup;
+    }
+
+    BN_CTX_free(ctx);
+    BN_free(n_squared);
+    BN_free(c_lambda);
+    BN_free(L_result);
+    BN_free(temp);
+    return m;
+	cleanup:
+    BN_free(m);
+    BN_free(n_squared);
+    BN_free(c_lambda);
+    BN_free(L_result);
+    BN_free(temp);
+    BN_CTX_free(ctx);
+    return NULL;
+}

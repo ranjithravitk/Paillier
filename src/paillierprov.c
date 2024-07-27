@@ -75,243 +75,245 @@ static providerctx *provider_ctx_new(const OSSL_CORE_HANDLE *core, const OSSL_DI
 	return provctx;
 }
 
-// static void *Paillier_newctx(void *prov_ctx)
-// {
-// 	Paillierctx *ctx = OPENSSL_zalloc(sizeof(*ctx));
-// 	if (ctx != NULL) {
-// 		ctx->provctx = prov_ctx;
+static void *Paillier_newctx(void *prov_ctx)
+{
+	Paillierctx *ctx = OPENSSL_zalloc(sizeof(*ctx));
+	if (ctx != NULL) {
+		ctx->provctx = prov_ctx;
 		 
-// 	}
-// 	return ctx;
-// }
-// static void Paillier_freectx(void *ctx)
-// {
-// 	if ((ctx != NULL)) {
-// 		Paillierctx *temp_ctx = (Paillierctx *)ctx;
-// 		free(temp_ctx);
-// 	}
-// }
-// static void *Paillier_dupctx(void *ectx)
-// {
-// 	Paillierctx *src = ectx;
-// 	Paillierctx *dst = OPENSSL_zalloc(sizeof(*src));
-// 	if (dst == NULL) {
-// 		return NULL;
-// 	}
-// 	dst->provctx = src->provctx;
-// 	dst->keydata = src->keydata;
-// 	dst->flags = src->flags;
-// 	return dst;
-// }
-// static int Paillier_encrypt_init(void *ctx, void *provkey,
-// 				const OSSL_PARAM params[])
-// {
-//     Paillierctx *ectx=ctx;
-//     keyctx *key=provkey;
-//     if(provkey!=NULL){
-//         ectx->keydata=key;
-//     }
+	}
+	return ctx;
+}
+static void Paillier_freectx(void *ctx)
+{
+	if ((ctx != NULL)) {
+		Paillierctx *temp_ctx = (Paillierctx *)ctx;
+		free(temp_ctx);
+	}
+}
+static void *Paillier_dupctx(void *ectx)
+{
+	Paillierctx *src = ectx;
+	Paillierctx *dst = OPENSSL_zalloc(sizeof(*src));
+	if (dst == NULL) {
+		return NULL;
+	}
+	dst->provctx = src->provctx;
+	dst->keydata = src->keydata;
+	dst->flags = src->flags;
+	return dst;
+}
+static int Paillier_encrypt_init(void *ctx, void *provkey,
+				const OSSL_PARAM params[])
+{
+    Paillierctx *ectx=ctx;
+    keyctx *key=provkey;
+    if(provkey!=NULL){
+        ectx->keydata=key;
+    }
 
-// 	return 1;
-// }
-// static int Paillier_decrypt_init(void *ctx, void *provkey,
-// 				const OSSL_PARAM params[])
-// {
-// 	Paillierctx *ectx=ctx;
-//     keyctx *key=provkey;
-//     if(provkey!=NULL){
-//         ectx->keydata=key;
-//     }
+	return 1;
+}
+static int Paillier_decrypt_init(void *ctx, void *provkey,
+				const OSSL_PARAM params[])
+{
+	Paillierctx *ectx=ctx;
+    keyctx *key=provkey;
+    if(provkey!=NULL){
+        ectx->keydata=key;
+    }
 
-// 	return 1;
+	return 1;
 	
-// }
+}
 
 
 
-// static int Paillier_encrypt(void *ctx, unsigned char *out, size_t *outlen,
-//                            size_t outsize, const unsigned char *in,
-//                            size_t inlen)
-// {
-//     Paillierctx *ectx = ctx;
-//     keyctx *tempkey = ectx->keydata;
-//     BIGNUM *bn_message, *x, *one, *p_minus_one, *c1, *c2, *s;
-//     int ret = 0;
+static int Paillier_encrypt(void *ctx, unsigned char *out, size_t *outlen,
+                           size_t outsize, const unsigned char *in,
+                           size_t inlen)
+{
+    Paillierctx *ectx = ctx;
+    keyctx *tempkey = ectx->keydata;
+    BIGNUM *bn_message, *gcd, *one, *p_minus_one, *c, *r,*n_squared,*g_m,*r_n;
+    int ret = 0;
 
-//     if (ctx == NULL || tempkey == NULL) {
-//         fprintf(stderr, "Error: Invalid context or key data\n");
-//         return 1;
-//     }
+    if (ctx == NULL || tempkey == NULL) {
+        fprintf(stderr, "Error: Invalid context or key data\n");
+        return 1;
+    }
 
-//     BN_CTX *bnctx = BN_CTX_new();
-//     if (bnctx == NULL) {
-//         fprintf(stderr, "Error: Failed to create BN_CTX\n");
-//         return 1;
-//     }
+    BN_CTX *bnctx = BN_CTX_new();
+    if (bnctx == NULL) {
+        fprintf(stderr, "Error: Failed to create BN_CTX\n");
+        return 1;
+    }
 
-//     BN_CTX_start(bnctx);
-//     bn_message = BN_CTX_get(bnctx);
-//     x = BN_CTX_get(bnctx);
-//     one = BN_CTX_get(bnctx);
-//     p_minus_one = BN_CTX_get(bnctx);
-//     c1 = BN_CTX_get(bnctx);
-//     c2 = BN_CTX_get(bnctx);
-//     s = BN_CTX_get(bnctx);
-
-//     if (bn_message == NULL || x == NULL || one == NULL || p_minus_one == NULL || c1 == NULL || c2 == NULL || s == NULL) {
-//         fprintf(stderr, "Error: BN_CTX_get failed\n");
-//         goto err;
-//     }
-
-//     BN_one(one);
-
-//     if (!BN_bin2bn(in, inlen, bn_message)) {
-//         fprintf(stderr, "Error converting message to BIGNUM\n");
-//         goto err;
-//     }
-
-//     if (BN_cmp(bn_message, tempkey->p) >= 0) {
-//         fprintf(stderr, "Error: Message is too large for the prime\n");
-//         goto err;
-//     }
-
-//     if (!BN_sub(p_minus_one, tempkey->p, one)) {
-//         fprintf(stderr, "Error: Calculating p - 1\n");
-//         goto err;
-//     }
-
-//     do {
-//         if (!BN_rand_range(x, p_minus_one)) {
-//             fprintf(stderr, "Error: Generating random x\n");
-//             goto err;
-//         }
-//         if (!BN_add(x, x, one)) {
-//             fprintf(stderr, "Error: Adjusting x to be within the range\n");
-//             goto err;
-//         }
-//     } while (BN_cmp(x, one) <= 0);
-
-//     if (!BN_mod_exp(c1, tempkey->g, x, tempkey->p, bnctx)) {
-//         fprintf(stderr, "Error: Calculating c1 = g^x mod p\n");
-//         goto err;
-//     }
-
-//     if (!BN_mod_exp(s, tempkey->y, x, tempkey->p, bnctx)) {
-//         fprintf(stderr, "Error: Calculating s = y^x mod p\n");
-//         goto err;
-//     }
+    BN_CTX_start(bnctx);
+    bn_message = BN_CTX_get(bnctx);
+    c = BN_CTX_get(bnctx);
+    r=BN_CTX_get(bnctx);
+    one=BN_CTX_get(bnctx);
+    gcd=BN_CTX_get(bnctx);
+    n_squared=BN_CTX_get(bnctx);
+    r_n=BN_CTX_get(bnctx);
+    g_m=BN_CTX_get(bnctx);
+    if (bn_message == NULL || r == NULL || c == NULL || one==NULL || n_squared==NULL || r_n==NULL || g_m==NULL) {
+        fprintf(stderr, "Error: BN_CTX_get failed\n");
+        goto err;
+    }
 
 
-//     if (!BN_mod_mul(c2, s, bn_message, tempkey->p, bnctx)) {
-//         fprintf(stderr, "Error: Calculating c2 = s * m mod p\n");
-//         goto err;
-//     }
+    if (!BN_bin2bn(in, inlen, bn_message)) {
+        fprintf(stderr, "Error converting message to BIGNUM\n");
+        goto err;
+    }
 
-//     if (!serialize_Paillier_ciphertext_readable(c1, c2, out, outlen)) {
-//         fprintf(stderr, "Error: Serializing ciphertext\n");
-//         goto err;
-//     }
+    if (BN_cmp(bn_message, tempkey->n) >= 0) {
+        fprintf(stderr, "Error: Message is too large for the prime\n");
+        goto err;
+    }
 
-//     ret = 1;
+    if (!BN_one(one)) {
+        fprintf(stderr, "Error: Setting one failed\n");
+        goto err;
+    }
 
-// err:
-//     BN_CTX_end(bnctx);
-//     BN_CTX_free(bnctx);
-//     return ret;
-// }
+    do {
+        // Generate random r in range [1, n-1]
+        if (!BN_rand_range(r, tempkey->n)) {
+            fprintf(stderr, "Error: Generating random r failed\n");
+            goto err;
+        }
+        if (!BN_add(r, r, one)) {
+            fprintf(stderr, "Error: Adjusting r failed\n");
+            goto err;
+        }
+
+        // Check gcd(r, n)
+        if (!BN_gcd(gcd, r, tempkey->n, bnctx)) {
+             unsigned long err_code = ERR_get_error();
+    char err_msg[256];
+    ERR_error_string_n(err_code, err_msg, sizeof(err_msg));
+            fprintf(stderr, "Error: GCD calculation failed\n");
+            goto err;
+        }
+    } while (BN_cmp(gcd, one) != 0);
+     // Calculate n^2
+    if (!BN_sqr(n_squared, tempkey->n, bnctx)) {
+        fprintf(stderr, "Error: Calculating n^2 failed\n");
+        goto err;
+    }
+
+    // Calculate g^m mod n^2
+    if (!BN_mod_exp(g_m, tempkey->g, bn_message, n_squared, bnctx)) {
+        fprintf(stderr, "Error: Calculating g^m mod n^2 failed\n");
+        goto err;
+    }
+
+    // Calculate r^n mod n^2
+    if (!BN_mod_exp(r_n, r, tempkey->n, n_squared, bnctx)) {
+        fprintf(stderr, "Error: Calculating r^n mod n^2 failed\n");
+        goto err;
+    }
+
+    // Calculate (g^m * r^n) mod n^2
+    if (!BN_mod_mul(c, g_m, r_n, n_squared, bnctx)) {
+        fprintf(stderr, "Error: Calculating final result failed\n");
+        goto err;
+    }
+
+    if (!serialize_Paillier_ciphertext_readable(c, out, outlen)) {
+        fprintf(stderr, "Error: Serializing ciphertext\n");
+        goto err;
+    }
+
+    ret = 1;
+
+err:
+    BN_CTX_end(bnctx);
+    BN_CTX_free(bnctx);
+    return ret;
+}
 
 
-// static int Paillier_decrypt(void *ctx, unsigned char *out, size_t *outlen,
-//                            size_t outsize, const unsigned char *in,
-//                            size_t inlen)
-// {
-//     Paillierctx *ectx = ctx;
-//     keyctx *tempkey = ectx->keydata;
-//     BIGNUM *bn_message, *c1, *c2, *s, *s_inv;
-//     int ret = 0;
+static int Paillier_decrypt(void *ctx, unsigned char *out, size_t *outlen,
+                           size_t outsize, const unsigned char *in,
+                           size_t inlen)
+{
+    Paillierctx *ectx = ctx;
+    keyctx *tempkey = ectx->keydata;
+    BIGNUM *bn_message, *c1, *c2, *s, *s_inv;
+    int ret = 0;
 
-//     if (ctx == NULL || tempkey == NULL) {
-//         fprintf(stderr, "Error: Invalid context or key data\n");
-//         return 1;
-//     }
+    if (ctx == NULL || tempkey == NULL) {
+        fprintf(stderr, "Error: Invalid context or key data\n");
+        return 1;
+    }
 
-//     BN_CTX *bnctx = BN_CTX_new();
-//     if (bnctx == NULL) {
-//         fprintf(stderr, "Error: Failed to create BN_CTX\n");
-//         return 1;
-//     }
+    BN_CTX *bnctx = BN_CTX_new();
+    if (bnctx == NULL) {
+        fprintf(stderr, "Error: Failed to create BN_CTX\n");
+        return 1;
+    }
 
-//     BN_CTX_start(bnctx);
-//     bn_message = BN_CTX_get(bnctx);
-//     c1 = BN_CTX_get(bnctx);
-//     c2 = BN_CTX_get(bnctx);
-//     s = BN_CTX_get(bnctx);
-//     s_inv = BN_CTX_get(bnctx);
+    BN_CTX_start(bnctx);
+    bn_message = BN_CTX_get(bnctx);
+    c1 = BN_CTX_get(bnctx);
+    c2 = BN_CTX_get(bnctx);
+    s = BN_CTX_get(bnctx);
+    s_inv = BN_CTX_get(bnctx);
 
-//     if (bn_message == NULL || c1 == NULL || c2 == NULL || s == NULL || s_inv == NULL) {
-//         fprintf(stderr, "Error: BN_CTX_get failed\n");
-//         goto err;
-//     }
+    if (bn_message == NULL || c1 == NULL || c2 == NULL || s == NULL || s_inv == NULL) {
+        fprintf(stderr, "Error: BN_CTX_get failed\n");
+        goto err;
+    }
 
-//     if (!deserialize_Paillier_ciphertext_readable(in, inlen, &c1, &c2)) {
-//         fprintf(stderr, "Error: Deserialization failed\n");
-//         goto err;
-//     }
+    if (!deserialize_Paillier_ciphertext_readable(in, inlen, &c1)) {
+        fprintf(stderr, "Error: Deserialization failed\n");
+        goto err;
+    }
+//    if(!calculate_m(c1,tempkey->lambda,tempkey->n,tempkey->mu))
+//    goto err;
+   // Calculate the required output length
+    size_t bn_message_len = BN_num_bytes(bn_message);
+    *outlen = bn_message_len;
 
-//     if (!BN_mod_exp(s, c1, tempkey->x, tempkey->p, bnctx)) {
-//         fprintf(stderr, "Error: BN_mod_exp failed\n");
-//         goto err;
-//     }
+    // If out is NULL, return the required length
+    if (out == NULL) {
+        ret = 1;
+        goto err;
+    }
 
-//     if (!BN_mod_inverse(s_inv, s, tempkey->p, bnctx)) {
-//         fprintf(stderr, "Error: BN_mod_inverse failed\n");
-//         goto err;
-//     }
+    // Check if the output buffer is large enough
+    if (*outlen > outsize) {
+        fprintf(stderr, "Error: Output buffer is too small\n");
+        goto err;
+    }
 
-//     if (!BN_mod_mul(bn_message, c2, s_inv, tempkey->p, bnctx)) {
-//         fprintf(stderr, "Error: BN_mod_mul failed\n");
-//         goto err;
-//     }
+    // Convert BIGNUM to binary and store it in the output buffer
+    BN_bn2bin(bn_message, out);
 
-//    // Calculate the required output length
-//     size_t bn_message_len = BN_num_bytes(bn_message);
-//     *outlen = bn_message_len;
+    ret = 1;
 
-//     // If out is NULL, return the required length
-//     if (out == NULL) {
-//         ret = 1;
-//         goto err;
-//     }
+err:
+    BN_CTX_end(bnctx);
+    BN_CTX_free(bnctx);
+    return ret;
+}
 
-//     // Check if the output buffer is large enough
-//     if (*outlen > outsize) {
-//         fprintf(stderr, "Error: Output buffer is too small\n");
-//         goto err;
-//     }
+static int Paillier_get_ctx_params(void *ctx, OSSL_PARAM params[])
+{
+	 OSSL_PARAM *p;
 
-//     // Convert BIGNUM to binary and store it in the output buffer
-//     BN_bn2bin(bn_message, out);
+    if ((p = OSSL_PARAM_locate(params, "provider-name")) != NULL)
+        OSSL_PARAM_set_utf8_ptr(p, "Paillier Provider");
 
-//     ret = 1;
+    if ((p = OSSL_PARAM_locate(params, "provider-version")) != NULL)
+        OSSL_PARAM_set_utf8_ptr(p, "1.0.0");
 
-// err:
-//     BN_CTX_end(bnctx);
-//     BN_CTX_free(bnctx);
-//     return ret;
-// }
-
-// static int Paillier_get_ctx_params(void *ctx, OSSL_PARAM params[])
-// {
-// 	 OSSL_PARAM *p;
-
-//     if ((p = OSSL_PARAM_locate(params, "provider-name")) != NULL)
-//         OSSL_PARAM_set_utf8_ptr(p, "Paillier Provider");
-
-//     if ((p = OSSL_PARAM_locate(params, "provider-version")) != NULL)
-//         OSSL_PARAM_set_utf8_ptr(p, "1.0.0");
-
-//     return 1;
-// }
+    return 1;
+}
 static const OSSL_PARAM gettable_params[] = {
     OSSL_PARAM_utf8_ptr("name", NULL, 0),
     OSSL_PARAM_utf8_ptr("version", NULL, 0),
@@ -324,19 +326,19 @@ static const OSSL_PARAM gettable_params[] = {
 	printf("hi there");
 	return gettable_params;
  }
-// static int Paillier_set_ctx_params(void *ctx, const OSSL_PARAM params[])
-// {
-// 	return 0;
-// }
-// static const OSSL_PARAM *Paillier_settable_ctx_params(void *ctx, void *provctx)
-// {
-// 	static const OSSL_PARAM table[] = {
-//         { "keylen", OSSL_PARAM_UNSIGNED_INTEGER, NULL, sizeof(size_t), 0 },
-//         { NULL, 0, NULL, 0, 0 },
-//     };
+static int Paillier_set_ctx_params(void *ctx, const OSSL_PARAM params[])
+{
+	return 0;
+}
+static const OSSL_PARAM *Paillier_settable_ctx_params(void *ctx, void *provctx)
+{
+	static const OSSL_PARAM table[] = {
+        { "keylen", OSSL_PARAM_UNSIGNED_INTEGER, NULL, sizeof(size_t), 0 },
+        { NULL, 0, NULL, 0, 0 },
+    };
 
-//     return table;
-// }
+    return table;
+}
 
 
 OSSL_LIB_CTX *ossl_prov_ctx_get0_libctx(providerctx *ctx)
@@ -639,24 +641,24 @@ err:
 
 }
 
-// static const OSSL_DISPATCH Paillier_functions[] = {
-// 	{ OSSL_FUNC_ASYM_CIPHER_NEWCTX, (funcptr_t)Paillier_newctx },
-// 	{ OSSL_FUNC_ASYM_CIPHER_FREECTX, (funcptr_t)Paillier_freectx },
-// 	{ OSSL_FUNC_ASYM_CIPHER_DUPCTX, (funcptr_t)Paillier_dupctx },
-// 	{ OSSL_FUNC_ASYM_CIPHER_ENCRYPT_INIT, (funcptr_t)Paillier_encrypt_init },
-// 	{ OSSL_FUNC_ASYM_CIPHER_DECRYPT_INIT, (funcptr_t)Paillier_decrypt_init },
-// 	{ OSSL_FUNC_ASYM_CIPHER_ENCRYPT, (funcptr_t)Paillier_encrypt },
-// 	{ OSSL_FUNC_ASYM_CIPHER_DECRYPT, (funcptr_t)Paillier_decrypt },
-// 	{ OSSL_FUNC_ASYM_CIPHER_GET_CTX_PARAMS,
-// 	  (funcptr_t)Paillier_get_ctx_params },
-// 	{ OSSL_FUNC_ASYM_CIPHER_GETTABLE_CTX_PARAMS,
-// 	  (funcptr_t)Paillier_gettable_ctx_params },
-// 	{ OSSL_FUNC_ASYM_CIPHER_SET_CTX_PARAMS,
-// 	  (funcptr_t)Paillier_set_ctx_params },
-// 	{ OSSL_FUNC_ASYM_CIPHER_SETTABLE_CTX_PARAMS,
-// 	  (funcptr_t)Paillier_settable_ctx_params },
-// 	{ 0, NULL }
-// };
+static const OSSL_DISPATCH Paillier_functions[] = {
+	{ OSSL_FUNC_ASYM_CIPHER_NEWCTX, (funcptr_t)Paillier_newctx },
+	{ OSSL_FUNC_ASYM_CIPHER_FREECTX, (funcptr_t)Paillier_freectx },
+	{ OSSL_FUNC_ASYM_CIPHER_DUPCTX, (funcptr_t)Paillier_dupctx },
+	{ OSSL_FUNC_ASYM_CIPHER_ENCRYPT_INIT, (funcptr_t)Paillier_encrypt_init },
+	{ OSSL_FUNC_ASYM_CIPHER_DECRYPT_INIT, (funcptr_t)Paillier_decrypt_init },
+	{ OSSL_FUNC_ASYM_CIPHER_ENCRYPT, (funcptr_t)Paillier_encrypt },
+	{ OSSL_FUNC_ASYM_CIPHER_DECRYPT, (funcptr_t)Paillier_decrypt },
+	{ OSSL_FUNC_ASYM_CIPHER_GET_CTX_PARAMS,
+	  (funcptr_t)Paillier_get_ctx_params },
+	{ OSSL_FUNC_ASYM_CIPHER_GETTABLE_CTX_PARAMS,
+	  (funcptr_t)Paillier_gettable_ctx_params },
+	{ OSSL_FUNC_ASYM_CIPHER_SET_CTX_PARAMS,
+	  (funcptr_t)Paillier_set_ctx_params },
+	{ OSSL_FUNC_ASYM_CIPHER_SETTABLE_CTX_PARAMS,
+	  (funcptr_t)Paillier_settable_ctx_params },
+	{ 0, NULL }
+};
 static const OSSL_DISPATCH Paillierkey_functions[] = {
 	{ OSSL_FUNC_KEYMGMT_NEW, (funcptr_t)Paillierkey_newctx },
 	{ OSSL_FUNC_KEYMGMT_FREE, (funcptr_t)Paillierkey_freectx },
@@ -678,9 +680,9 @@ static const OSSL_DISPATCH Paillierkey_functions[] = {
 
 
 // //extern const OSSL_DISPATCH Paillier_encoder_publickey_PEM[];
-// static const OSSL_ALGORITHM Paillier_ciphers[] = { { "Paillier", "x.author=ranjith",
-// 						    Paillier_functions},
-// 						  { NULL, NULL, NULL } };
+static const OSSL_ALGORITHM Paillier_ciphers[] = { { "Paillier", "x.author=ranjith",
+						    Paillier_functions},
+						  { NULL, NULL, NULL } };
 static const OSSL_ALGORITHM Paillierkey_operation[] = { { "Paillier", "x.author=ranjith",
 						    Paillierkey_functions},
 						  { NULL, NULL, NULL } };
@@ -704,8 +706,8 @@ Paillier_prov_operation(void *vprovctx, int operation_id, int *no_cache)
 	*no_cache = 0;
 	
 	switch (operation_id) {
-	// case OSSL_OP_ASYM_CIPHER:
-	// 	return Paillier_ciphers;
+	case OSSL_OP_ASYM_CIPHER:
+		return Paillier_ciphers;
 	case OSSL_OP_KEYMGMT:
 	    return Paillierkey_operation;
 	case  OSSL_OP_ENCODER:

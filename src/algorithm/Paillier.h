@@ -125,7 +125,9 @@ int Paillier_public_key_gen(BN_CTX *ctx,const keyctx *keydata,const BIGNUM *priv
 OSSL_LIB_CTX *getlibctx(void *provctx);
 int modular_exp(BN_CTX *ctx,const BIGNUM *g,const BIGNUM *p,BIGNUM *c,const BIGNUM *x,keyctx *keydata);
 int modular_mul_mont(BN_CTX *ctx, keyctx *keydata,const BIGNUM *s,const BIGNUM *m,BIGNUM *c2);
-int serialize_Paillier_ciphertext_readable(BIGNUM *c1, BIGNUM *c2, unsigned char *out, size_t *out_len);
+int serialize_Paillier_ciphertext_readable(BIGNUM *c1,unsigned char *out, size_t *out_len);
 int modular_exp_decrypt(BN_CTX *ctx,const BIGNUM *g,const BIGNUM *p,BIGNUM *c,const BIGNUM *x,keyctx *keydata);
 int decryptmodular_mul_mont(BN_CTX *ctx, keyctx *keydata,const BIGNUM *s_inv,const BIGNUM *c2,BIGNUM *m);
-int deserialize_Paillier_ciphertext_readable(const unsigned char *in, size_t in_len, BIGNUM **c1, BIGNUM **c2);
+int deserialize_Paillier_ciphertext_readable(const unsigned char *in, size_t in_len, BIGNUM **c1);
+BIGNUM *calculate_L(const BIGNUM *x, const BIGNUM *n, BN_CTX *ctx );
+BIGNUM *calculate_m(const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, const BIGNUM *mu);

@@ -224,7 +224,7 @@ static int PaillierDER_decode_key(void *ctx, OSSL_CORE_BIO *in, int selection, O
 
         kdata->n=asn1_integer_to_bn(pubkey->n);
         kdata->g=asn1_integer_to_bn(pubkey->g);
-        if (kdata->p==NULL || kdata->g==NULL)
+        if (kdata->n==NULL || kdata->g==NULL)
             goto err;
 
         kdata->selections = OSSL_KEYMGMT_SELECT_PUBLIC_KEY|OSSL_KEYMGMT_SELECT_ALL_PARAMETERS;
