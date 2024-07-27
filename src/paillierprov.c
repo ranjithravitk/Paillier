@@ -273,8 +273,8 @@ static int Paillier_decrypt(void *ctx, unsigned char *out, size_t *outlen,
         fprintf(stderr, "Error: Deserialization failed\n");
         goto err;
     }
-//    if(!calculate_m(c1,tempkey->lambda,tempkey->n,tempkey->mu))
-//    goto err;
+   if(!calculate_m(bn_message,c1,tempkey->lambda,tempkey->n,tempkey->mu))
+   goto err;
    // Calculate the required output length
     size_t bn_message_len = BN_num_bytes(bn_message);
     *outlen = bn_message_len;

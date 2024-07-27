@@ -165,13 +165,12 @@ int serialize_Paillier_ciphertext_readable(BIGNUM *c1,unsigned char *out, size_t
     return 1;
 }
 
-BIGNUM *calculate_L(const BIGNUM *x, const BIGNUM *n, BN_CTX *ctx ) {
-    BIGNUM *result = BN_new();
+int calculate_L(BIGNUM *result, const BIGNUM *x, const BIGNUM *n, BN_CTX *ctx) {
     BIGNUM *x_minus_one = BN_new();
     BIGNUM *one = BN_new();
+    int ret = 0;
 
-
-    if (!result || !x_minus_one || !one || !ctx) {
+    if (!x_minus_one || !one) {
         fprintf(stderr, "Error: Memory allocation failed\n");
         goto cleanup;
     }
@@ -187,24 +186,19 @@ BIGNUM *calculate_L(const BIGNUM *x, const BIGNUM *n, BN_CTX *ctx ) {
         fprintf(stderr, "Error: Calculating x-1 failed\n");
         goto cleanup;
     }
-	 // Calculate (x-1) / n
+
+    // Calculate (x-1) / n
     if (!BN_div(result, NULL, x_minus_one, n, ctx)) {
         fprintf(stderr, "Error: Division failed\n");
         goto cleanup;
     }
 
-    // Cleanup and return
-    BN_CTX_free(ctx);
-    BN_free(x_minus_one);
-    BN_free(one);
-    return result;
+    ret = 1;  // Success
 
 cleanup:
-    BN_free(result);
     BN_free(x_minus_one);
     BN_free(one);
-    BN_CTX_free(ctx);
-    return NULL;
+    return ret;
 }
 int hex_to_bin(const char *hex, unsigned char *bin, int bin_len) {
     for (int i = 0; i < bin_len; i++) {
@@ -213,43 +207,48 @@ int hex_to_bin(const char *hex, unsigned char *bin, int bin_len) {
     return 1;
 }
 
-int deserialize_Paillier_ciphertext_readable(const unsigned char *in, size_t in_len, BIGNUM **c1){
-
- //int c1_len = BN_num_bytes(c1); // Length in bytes
-    
-    // Allocate memory for binary data
-    unsigned char *c1_bin = (unsigned char *)OPENSSL_malloc(in_len);
-   
-
-    if (c1_bin == NULL ) {
-        OPENSSL_free(c1_bin);
-        
+int deserialize_Paillier_ciphertext_readable(const unsigned char *in, size_t in_len, BIGNUM **c1) {
+    // Check input parameters
+    if (in == NULL || c1 == NULL || in_len == 0) {
         return 0;
     }
 
-    // Convert hexadecimal to binary for c1
-    hex_to_bin((const char *)in, c1_bin, c1_len);
-    *c1 = BN_bin2bn(c1_bin, c1_len, NULL);
-    OPENSSL_free(c1_bin);
+    // Allocate memory for the binary data
+    size_t bin_len = in_len / 2;
+    unsigned char *bin_data = (unsigned char *)OPENSSL_malloc(bin_len);
+    if (bin_data == NULL) {
+        return 0;
+    }
 
-    // Check for allocation failure
+    // Convert hex string to binary using the provided hex_to_bin function
+    if (!hex_to_bin((const char *)in, bin_data, bin_len)) {
+        OPENSSL_free(bin_data);
+        return 0;
+    }
+
+    // Create BIGNUM from binary data
+    *c1 = BN_bin2bn(bin_data, bin_len, NULL);
+    
+    // Free the temporary binary buffer
+    OPENSSL_free(bin_data);
+
+    // Check if BIGNUM creation was successful
     if (*c1 == NULL) {
-        BN_free(*c1);
         return 0;
     }
 
     return 1;
 }
 
-BIGNUM *calculate_m(const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, const BIGNUM *mu) {
-    BIGNUM *m = BN_new();
+int calculate_m(BIGNUM *m, const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, const BIGNUM *mu) {
     BIGNUM *n_squared = BN_new();
     BIGNUM *c_lambda = BN_new();
-    BIGNUM *L_result = NULL;
+    BIGNUM *L_result = BN_new();
     BIGNUM *temp = BN_new();
     BN_CTX *ctx = BN_CTX_new();
+    int ret = 0;
 
-    if (!m || !n_squared || !c_lambda || !temp || !ctx) {
+    if (!n_squared || !c_lambda || !L_result || !temp || !ctx) {
         fprintf(stderr, "Error: Memory allocation failed\n");
         goto cleanup;
     }
@@ -265,10 +264,9 @@ BIGNUM *calculate_m(const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, cons
         fprintf(stderr, "Error: Calculating c^λ mod n^2 failed\n");
         goto cleanup;
     }
-    
+
     // Calculate L(c^λ mod n^2)
-    L_result = calculate_L(c_lambda, n, ctx);
-    if (!L_result) {
+    if (!calculate_L(L_result, c_lambda, n, ctx)) {
         fprintf(stderr, "Error: Calculating L failed\n");
         goto cleanup;
     }
@@ -285,18 +283,13 @@ BIGNUM *calculate_m(const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, cons
         goto cleanup;
     }
 
-    BN_CTX_free(ctx);
-    BN_free(n_squared);
-    BN_free(c_lambda);
-    BN_free(L_result);
-    BN_free(temp);
-    return m;
-	cleanup:
-    BN_free(m);
+    ret = 1;  // Success
+
+cleanup:
     BN_free(n_squared);
     BN_free(c_lambda);
     BN_free(L_result);
     BN_free(temp);
     BN_CTX_free(ctx);
-    return NULL;
+    return ret;
 }

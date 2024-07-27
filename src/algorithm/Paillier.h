@@ -129,5 +129,5 @@ int serialize_Paillier_ciphertext_readable(BIGNUM *c1,unsigned char *out, size_t
 int modular_exp_decrypt(BN_CTX *ctx,const BIGNUM *g,const BIGNUM *p,BIGNUM *c,const BIGNUM *x,keyctx *keydata);
 int decryptmodular_mul_mont(BN_CTX *ctx, keyctx *keydata,const BIGNUM *s_inv,const BIGNUM *c2,BIGNUM *m);
 int deserialize_Paillier_ciphertext_readable(const unsigned char *in, size_t in_len, BIGNUM **c1);
-BIGNUM *calculate_L(const BIGNUM *x, const BIGNUM *n, BN_CTX *ctx );
-BIGNUM *calculate_m(const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, const BIGNUM *mu);
+int calculate_L(BIGNUM *result, const BIGNUM *x, const BIGNUM *n, BN_CTX *ctx);
+int calculate_m(BIGNUM *m, const BIGNUM *c, const BIGNUM *lambda, const BIGNUM *n, const BIGNUM *mu);
