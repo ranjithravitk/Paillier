@@ -566,22 +566,21 @@ static int Paillierkeygen_set_params(void *genctx, const OSSL_PARAM params[])
     if (ctx == NULL)
         return 0;
     if (params == NULL)
-        return 1;
-
-   if ((p = OSSL_PARAM_locate_const(params, OSSL_PKEY_PARAM_FFC_PBITS)) != NULL
-        && !OSSL_PARAM_get_size_t(p, &ctx->nbits))
         return 0;
-    // p = OSSL_PARAM_locate_const(params, OSSL_PKEY_PARAM_DH_GENERATOR);
-    // if (p != NULL && !OSSL_PARAM_get_int(p, &ctx->generator))
-    //     return 0;
-	return 1;
+
+   if ((p = OSSL_PARAM_locate_const(params, OSSL_PKEY_PARAM_BITS)) != NULL 
+    && OSSL_PARAM_get_size_t(p, &ctx->nbits)) {
+    ctx->pbits = ctx->nbits >> 1;
+    ctx->qbits = ctx->nbits >> 1;
+    return 1;
+}
+
 }
 static const OSSL_PARAM *Paillierkeygen_settable_params(void *genctx,
                                                         void *provctx)
 {
 	static const OSSL_PARAM Paillier_gen_settable[] = {
-        OSSL_PARAM_size_t(OSSL_PKEY_PARAM_FFC_PBITS, NULL),
-        OSSL_PARAM_int(OSSL_PKEY_PARAM_DH_GENERATOR, NULL),
+        OSSL_PARAM_size_t(OSSL_PKEY_PARAM_BITS, NULL),
         OSSL_PARAM_END
     };
     return Paillier_gen_settable;
