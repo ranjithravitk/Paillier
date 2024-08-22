@@ -126,6 +126,7 @@ int serialize_Paillier_ciphertext_readable(BIGNUM *c1,unsigned char *out, size_t
     c1_bin = (unsigned char *)OPENSSL_malloc(c1_len);
    
     if (c1_bin == NULL) {
+         fprintf(stderr, "memory allocation failure\n");
         return 0;
     }
 
@@ -135,10 +136,12 @@ int serialize_Paillier_ciphertext_readable(BIGNUM *c1,unsigned char *out, size_t
     // Calculate the required buffer size
     // Format: "c1_bin|c2_bin"
     required_len = (c1_len * 2); // Each byte -> 2 hex chars, 1 delimiter
+  
 
     // If out is NULL, return the required size and exit
     if (out == NULL) {
-        *out_len = required_len;
+        *out_len = required_len+50;
+         
         OPENSSL_free(c1_bin);
         return 1;
     }
