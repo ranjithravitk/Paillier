@@ -126,7 +126,6 @@ int serialize_Paillier_ciphertext_readable(BIGNUM *c1,unsigned char *out, size_t
     c1_bin = (unsigned char *)OPENSSL_malloc(c1_len);
    
     if (c1_bin == NULL) {
-        OPENSSL_free(c1_bin);
         return 0;
     }
 
