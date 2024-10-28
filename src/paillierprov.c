@@ -14,8 +14,6 @@
 #include <openssl/core_object.h>
 #include "algorithm/Paillier.h"
 #include <openssl/pem.h>
-#include <openssl/bn.h>
-#include <openssl/err.h>
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/param_build.h>
